@@ -6,13 +6,15 @@ import keyboard
 import time
 import json
 import os
+import math
 
 SCENARIO_FILE = 'scenarios.json'
 
 class AutoClicker:
     def __init__(self, master):
         self.master = master
-        self.master.title("Simple Auto Clicker")
+        self.master.title("Scenarios")
+        self.master.config(bg="#212121")
         window_width = 450
         window_height = 550
         screen_width = master.winfo_screenwidth()
@@ -56,23 +58,48 @@ class AutoClicker:
 
     def show_welcome_screen(self):
         self.clear_widgets()
-        title = tk.Label(self.master, text="Scenarios", font=("Arial", 24, "bold"))
-        title.pack(pady=(40, 10))
-        self.widgets.append(title)
+        self.master.config(bg="#101D18")
 
-        canvas = tk.Canvas(self.master, width=200, height=150, bg=self.master.cget('bg'), highlightthickness=0)
-        canvas.create_rectangle(50, 80, 150, 140, fill="#f5f5f5", outline="#bbb", width=2)
-        canvas.create_polygon(50, 80, 100, 40, 150, 80, 100, 120, fill="#fff", outline="#bbb", width=2)
-        canvas.pack(pady=10)
-        self.widgets.append(canvas)
+        topbar = tk.Frame(self.master, bg="#101D18")
+        topbar.pack(fill=tk.X, pady=(5, 0), padx=(20, 5))
 
-        subtitle = tk.Label(self.master, text="Create your first scenario and\nstart automatizing tasks on your PC", font=("Arial", 14), justify="center")
+        title = tk.Label(topbar, text="Scenarios", font=("Arial", 22, "bold"), fg="white", bg="#101D18")
+        title.pack(side=tk.LEFT)
+
+        folder_btn = tk.Button(topbar, text="📁", font=("Arial", 16), bd=0, command=self.import_scenarios, cursor="hand2", bg="#101D18", fg="white", activebackground="#101D18", activeforeground="white")
+        folder_btn.pack(side=tk.RIGHT)
+        
+        center_frame = tk.Frame(self.master, bg="#101D18")
+        center_frame.pack(pady=20, expand=True)
+
+        canvas = tk.Canvas(center_frame, width=120, height=120, bg="#101D18", highlightthickness=0)
+        
+        # Draw the box icon
+        canvas.create_polygon(30, 70, 60, 85, 90, 70, 60, 55, fill="#f0f0f0", outline="grey")
+        canvas.create_polygon(30, 70, 30, 90, 60, 105, 60, 85, fill="#e0e0e0", outline="grey")
+        canvas.create_polygon(90, 70, 90, 90, 60, 105, 60, 85, fill="#d0d0d0", outline="grey")
+        canvas.create_polygon(30, 70, 60, 55, 60, 35, 30, 50, fill="white", outline="grey")
+        canvas.create_polygon(90, 70, 60, 55, 60, 35, 90, 50, fill="#f8f8f8", outline="grey")
+
+        for i in range(7):
+            angle = -15 + i * 25
+            rad = angle * math.pi / 180
+            x1 = 60 + 30 * math.cos(rad)
+            y1 = 40 - 30 * math.sin(rad)
+            x2 = 60 + 40 * math.cos(rad)
+            y2 = 40 - 40 * math.sin(rad)
+            canvas.create_line(x1, y1, x2, y2, fill="#4CAF50", width=2)
+        
+        canvas.pack(pady=20)
+
+        subtitle = tk.Label(center_frame, text="Create your first scenario and start\nautomatizing tasks on your phone", font=("Arial", 14), justify="center", fg="white", bg="#101D18")
         subtitle.pack(pady=20)
-        self.widgets.append(subtitle)
 
-        create_btn = tk.Button(self.master, text="Create a scenario", font=("Arial", 14, "bold"), bg="#1976d2", fg="white", activebackground="#1565c0", activeforeground="white", padx=20, pady=10, command=self.create_first_scenario)
+        create_btn = tk.Button(self.master, text="Create a scenario", font=("Arial", 14, "bold"), bg="#4CAF50", fg="white", activebackground="#45a049", activeforeground="white", padx=20, pady=10, command=self.create_first_scenario, relief=tk.FLAT, bd=0)
         create_btn.pack(pady=30, ipadx=10, ipady=5)
-        self.widgets.append(create_btn)
+
+        self.widgets.extend([topbar, title, folder_btn, center_frame, canvas, subtitle, create_btn])
+
 
     def show_new_scenario_interface(self):
         self.clear_widgets()
@@ -141,69 +168,55 @@ class AutoClicker:
         self.show_main_interface()
 
     def show_main_interface(self, load_scenarios=True):
-        self.clear_widgets()
-        # Top bar
-        topbar = tk.Frame(self.master)
-        topbar.pack(fill=tk.X, pady=(5, 0))
-        title = tk.Label(topbar, text="Scenarios", font=("Arial", 22, "bold"))
-        title.pack(side=tk.LEFT, padx=(20, 0))
-        folder_btn = tk.Button(topbar, text="📁", font=("Arial", 16), bd=0, command=self.import_scenarios, cursor="hand2")
-        folder_btn.pack(side=tk.RIGHT, padx=5)
-        search_btn = tk.Button(topbar, text="🔍", font=("Arial", 16), bd=0, command=self.search_scenarios, cursor="hand2")
-        search_btn.pack(side=tk.RIGHT, padx=5)
-        settings_btn = tk.Button(topbar, text="⚙️", font=("Arial", 16), bd=0, command=self.open_settings, cursor="hand2")
-        settings_btn.pack(side=tk.RIGHT, padx=5)
-        self.widgets.extend([topbar, title, folder_btn, search_btn, settings_btn])
-
-        # Filter/sort bar
-        filter_frame = tk.Frame(self.master, bg="#eaf2fa")
-        filter_frame.pack(pady=(10, 0), padx=10, fill=tk.X)
-        self.filter_var = tk.StringVar(value="Name")
-        name_btn = tk.Radiobutton(filter_frame, text="A Z Name", variable=self.filter_var, value="Name", font=("Arial", 12), indicatoron=0, width=10, padx=10, pady=8, bg="#eaf2fa", selectcolor="#d0e6fa")
-        recent_btn = tk.Radiobutton(filter_frame, text="⏲ Recent", variable=self.filter_var, value="Recent", font=("Arial", 12), indicatoron=0, width=10, padx=10, pady=8, bg="#eaf2fa", selectcolor="#d0e6fa")
-        fav_btn = tk.Radiobutton(filter_frame, text="☆ Favorite", variable=self.filter_var, value="Favorite", font=("Arial", 12), indicatoron=0, width=10, padx=10, pady=8, bg="#eaf2fa", selectcolor="#d0e6fa")
-        name_btn.pack(side=tk.LEFT, padx=(5, 0))
-        recent_btn.pack(side=tk.LEFT)
-        fav_btn.pack(side=tk.LEFT)
-        self.widgets.extend([filter_frame, name_btn, recent_btn, fav_btn])
-
-        # Scenario type filter (Checkbuttons, persistent variables)
-        type_filter_frame = tk.Frame(self.master, bg="#eaf2fa")
-        type_filter_frame.pack(pady=(10, 0), padx=10, fill=tk.X)
-        smart_btn = tk.Checkbutton(type_filter_frame, text="✔ Smart", variable=self.type_filter_smart, font=("Arial", 12), indicatoron=0, width=10, padx=10, pady=8, bg="#eaf2fa", selectcolor="#d0e6fa", command=lambda: self.show_main_interface(load_scenarios=False))
-        simple_btn = tk.Checkbutton(type_filter_frame, text="✔ Simple", variable=self.type_filter_simple, font=("Arial", 12), indicatoron=0, width=10, padx=10, pady=8, bg="#eaf2fa", selectcolor="#d0e6fa", command=lambda: self.show_main_interface(load_scenarios=False))
-        smart_btn.pack(side=tk.LEFT, padx=(5, 0))
-        simple_btn.pack(side=tk.LEFT)
-        self.widgets.extend([type_filter_frame, smart_btn, simple_btn])
-
-        # Scenario cards
         if load_scenarios:
             self.load_scenarios()
-        card_frame = tk.Frame(self.master, bg="#f3f7fa")
+
+        if not self.scenarios:
+            self.show_welcome_screen()
+            return
+
+        self.clear_widgets()
+        self.master.config(bg="#101D18")
+
+        # Top bar
+        topbar = tk.Frame(self.master, bg="#101D18")
+        topbar.pack(fill=tk.X, pady=(5, 0))
+        title = tk.Label(topbar, text="Scenarios", font=("Arial", 22, "bold"), fg="white", bg="#101D18")
+        title.pack(side=tk.LEFT, padx=(20, 0))
+        search_btn = tk.Button(topbar, text="🔍", font=("Arial", 16), bd=0, command=self.search_scenarios, cursor="hand2", bg="#101D18", fg="white", activebackground="#101D18")
+        search_btn.pack(side=tk.RIGHT, padx=5)
+        folder_btn = tk.Button(topbar, text="📁", font=("Arial", 16), bd=0, command=self.import_scenarios, cursor="hand2", bg="#101D18", fg="white", activebackground="#101D18")
+        folder_btn.pack(side=tk.RIGHT, padx=5)
+        self.widgets.extend([topbar, title, folder_btn, search_btn])
+
+        # Scenario cards
+        card_frame = tk.Frame(self.master, bg="#101D18")
         card_frame.pack(pady=20, padx=20, fill=tk.BOTH, expand=True)
         self.widgets.append(card_frame)
         for name, data in self.scenarios.items():
             typ = data.get('type', 'Simple')
-            show_smart = self.type_filter_smart.get()
-            show_simple = self.type_filter_simple.get()
-            if (typ == "Smart" and not show_smart) or (typ == "Simple" and not show_simple):
-                continue
-            icon = "✖️➔" if typ == "Simple" else "🖼️"
-            card = tk.Frame(card_frame, bg="#e9f1f7", bd=1, relief=tk.RIDGE)
-            card.pack(fill=tk.X, pady=8)
-            icon_label = tk.Label(card, text=icon, font=("Arial", 16), bg="#e9f1f7")
-            icon_label.pack(side=tk.LEFT, padx=10)
-            name_label = tk.Label(card, text=name, font=("Arial", 14, "bold"), bg="#e9f1f7")
-            name_label.pack(side=tk.LEFT, padx=10)
-            del_btn = tk.Button(card, text="🗑️", font=("Arial", 12), bd=0, command=lambda n=name: self.delete_scenario_by_name(n), cursor="hand2", bg="#e9f1f7", activebackground="#e9f1f7")
+            
+            card = tk.Frame(card_frame, bg="#2C3E34", height=60)
+            card.pack(fill=tk.X, pady=5, ipady=8)
+            card.pack_propagate(False)
+
+            name_label = tk.Label(card, text=name, font=("Arial", 14), bg="#2C3E34", fg="white")
+            name_label.pack(side=tk.LEFT, padx=20)
+            
+            play_canvas = tk.Canvas(card, width=40, height=40, bg="#2C3E34", highlightthickness=0)
+            play_canvas.create_oval(5, 5, 35, 35, fill="#4CAF50", outline="")
+            play_canvas.create_polygon(17, 14, 17, 26, 28, 20, fill="white")
+            play_canvas.pack(side=tk.RIGHT, padx=10)
+            play_canvas.bind("<Button-1>", lambda e, n=name: self.play_scenario_by_name(n))
+
+            del_btn = tk.Button(card, text="🗑️", font=("Arial", 12), bd=0, command=lambda n=name: self.delete_scenario_by_name(n), cursor="hand2", bg="#2C3E34", fg="white", activebackground="#2C3E34")
             del_btn.pack(side=tk.RIGHT, padx=10)
-            play_btn = tk.Button(card, text="▶️", font=("Arial", 14), bd=0, command=lambda n=name: self.play_scenario_by_name(n), cursor="hand2", bg="#e9f1f7", activebackground="#e9f1f7")
-            play_btn.pack(side=tk.RIGHT, padx=10)
-            self.widgets.extend([card, icon_label, name_label, del_btn, play_btn])
+            
+            self.widgets.extend([card, name_label, del_btn, play_canvas])
 
         # Floating + button
-        plus_btn = tk.Button(self.master, text="+", font=("Arial", 24, "bold"), bg="#b3e0ff", fg="#222", bd=0, command=self.show_new_scenario_interface, cursor="hand2")
-        plus_btn.place(relx=0.92, rely=0.92, anchor="center")
+        plus_btn = tk.Button(self.master, text="+", font=("Arial", 24, "bold"), bg="#4CAF50", fg="white", bd=0, command=self.show_new_scenario_interface, cursor="hand2", activebackground="#45a049", relief=tk.FLAT)
+        plus_btn.place(relx=0.9, rely=0.9, anchor="center", width=50, height=50)
         self.widgets.append(plus_btn)
 
     def update_mouse_position(self):
