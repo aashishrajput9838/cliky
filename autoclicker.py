@@ -102,42 +102,62 @@ class AutoClicker:
 
 
     def show_new_scenario_interface(self):
-        self.clear_widgets()
-        # Top bar
-        topbar = tk.Frame(self.master)
-        topbar.pack(fill=tk.X, pady=(5, 0))
-        close_btn = tk.Button(topbar, text="✕", font=("Arial", 16), bd=0, command=self.show_main_interface, cursor="hand2")
-        close_btn.pack(side=tk.LEFT, padx=10)
-        title = tk.Label(topbar, text="New scenario", font=("Arial", 18, "bold"))
-        title.pack(side=tk.LEFT, padx=10)
-        save_btn = tk.Button(topbar, text="💾", font=("Arial", 16), bd=0, command=self.save_new_scenario, cursor="hand2")
-        save_btn.pack(side=tk.RIGHT, padx=10)
-        self.widgets.extend([topbar, close_btn, title, save_btn])
+        # Modal dialog for new scenario (mobile style)
+        dialog = tk.Toplevel(self.master)
+        dialog.title("New scenario")
+        dialog.transient(self.master)
+        dialog.grab_set()
+        dialog.resizable(False, False)
+        dialog.configure(bg="#18221B")
+        # Center the dialog
+        dialog.update_idletasks()
+        w, h = 380, 220
+        x = self.master.winfo_x() + (self.master.winfo_width() // 2) - (w // 2)
+        y = self.master.winfo_y() + (self.master.winfo_height() // 2) - (h // 2)
+        dialog.geometry(f"{w}x{h}+{x}+{y}")
 
-        # Scenario name
-        name_label = tk.Label(self.master, text="Scenario name", font=("Arial", 12))
-        name_label.pack(pady=(30, 0))
-        name_entry = tk.Entry(self.master, font=("Arial", 14))
-        name_entry.insert(0, "Default name")
-        name_entry.pack(pady=(0, 20), ipadx=10, ipady=5)
+        # Rounded effect (simulate with padding and bg)
+        container = tk.Frame(dialog, bg="#233024", bd=0)
+        container.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.92, relheight=0.7)
+
+        title = tk.Label(container, text="New scenario", font=("Arial", 16, "bold"), fg="white", bg="#233024")
+        title.pack(pady=(18, 8))
+
+        entry_frame = tk.Frame(container, bg="#233024")
+        entry_frame.pack(pady=(0, 10), padx=18, fill=tk.X)
+        name_entry = tk.Entry(entry_frame, font=("Arial", 13), bg="#18221B", fg="white", insertbackground="white", relief=tk.FLAT, highlightthickness=2, highlightcolor="#4CAF50")
+        name_entry.pack(fill=tk.X, ipady=7)
+        name_entry.insert(0, "")
+        name_entry.focus_set()
+        name_entry.config(justify="left")
+        name_entry.bind("<Return>", lambda e: save())
+        name_entry.bind("<Escape>", lambda e: cancel())
+        name_entry.config(highlightbackground="#4CAF50")
+        name_entry.placeholder = "Name"  # For reference, not shown in Tkinter
         self.new_scenario_name_entry = name_entry
-        self.widgets.extend([name_label, name_entry])
 
-        # Scenario type selection
-        type_frame = tk.Frame(self.master, bg="#f3f7fa", bd=1, relief=tk.FLAT)
-        type_frame.pack(pady=10, padx=20, fill=tk.X)
-        type_label = tk.Label(type_frame, text="Scenario type", font=("Arial", 12, "bold"), bg="#f3f7fa")
-        type_label.pack(anchor="w", padx=10, pady=(10, 0))
-        btn_frame = tk.Frame(type_frame, bg="#f3f7fa")
-        btn_frame.pack(pady=10, padx=10, fill=tk.X)
-        self.scenario_type_var = tk.StringVar(value="Simple")
-        self.simple_btn = tk.Button(btn_frame, text=self.get_scenario_btn_text("Simple"), font=("Arial", 12), width=12, padx=10, pady=10, relief=tk.RAISED, command=lambda: self.select_scenario_type("Simple"))
-        self.smart_btn = tk.Button(btn_frame, text=self.get_scenario_btn_text("Smart"), font=("Arial", 12), width=12, padx=10, pady=10, relief=tk.RAISED, command=lambda: self.select_scenario_type("Smart"))
-        self.simple_btn.pack(side=tk.LEFT, padx=10)
-        self.smart_btn.pack(side=tk.LEFT, padx=10)
-        desc_label = tk.Label(type_frame, text="The regular auto clicker experience.\nSimply place clicks and swipes on the screen.", font=("Arial", 10), bg="#f3f7fa")
-        desc_label.pack(pady=(0, 10))
-        self.widgets.extend([type_frame, type_label, btn_frame, self.simple_btn, self.smart_btn, desc_label])
+        # Button row
+        btn_frame = tk.Frame(container, bg="#233024")
+        btn_frame.pack(pady=(10, 0), fill=tk.X)
+        def cancel():
+            dialog.destroy()
+        def save():
+            name = name_entry.get().strip()
+            if not name:
+                messagebox.showerror("Error", "Scenario name cannot be empty.", parent=dialog)
+                return
+            self.scenarios[name] = {'steps': [], 'description': '', 'type': 'Simple'}
+            self.save_scenarios()
+            dialog.destroy()
+            self.show_main_interface()
+        cancel_btn = tk.Button(btn_frame, text="Cancel", font=("Arial", 12), bg="#233024", fg="#4CAF50", activebackground="#233024", activeforeground="#4CAF50", bd=0, relief=tk.FLAT, command=cancel)
+        cancel_btn.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(0, 8), ipadx=8, ipady=3)
+        ok_btn = tk.Button(btn_frame, text="OK", font=("Arial", 12, "bold"), bg="#233024", fg="#4CAF50", activebackground="#233024", activeforeground="#4CAF50", bd=0, relief=tk.FLAT, command=save)
+        ok_btn.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(8, 0), ipadx=8, ipady=3)
+
+        # For keyboard navigation
+        dialog.bind("<Escape>", lambda e: cancel())
+        dialog.bind("<Return>", lambda e: save())
 
     def get_scenario_btn_text(self, typ):
         if typ == "Simple":
@@ -158,14 +178,8 @@ class AutoClicker:
         self.show_new_scenario_interface()
 
     def save_new_scenario(self):
-        name = self.new_scenario_name_entry.get().strip()
-        if not name:
-            messagebox.showerror("Error", "Scenario name cannot be empty.")
-            return
-        typ = self.scenario_type_var.get()
-        self.scenarios[name] = {'steps': [], 'description': '', 'type': typ}
-        self.save_scenarios()
-        self.show_main_interface()
+        # No longer used with modal dialog, but keep for compatibility
+        pass
 
     def show_main_interface(self, load_scenarios=True):
         if load_scenarios:
@@ -615,9 +629,25 @@ class AutoClicker:
             y if y is not None else 80))
         overlay.overrideredirect(True)
         overlay.attributes("-topmost", True)
-        overlay.attributes("-alpha", 0.7)
-        overlay.config(bg="#3a4655")
-        # Make overlay draggable
+        overlay.attributes("-alpha", 0.95)
+        overlay.config(bg="#000000")  # Pure black
+        self.overlay_window = overlay  # Store reference for raising
+        btn_frame = tk.Frame(overlay, bg="#000000")
+        btn_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
+        play_btn = tk.Button(btn_frame, text="▶", font=("Arial", 26, "bold"), bg="#000000", fg="white", bd=0, relief=tk.FLAT, activebackground="#000000", activeforeground="white")
+        play_btn.pack(pady=(18, 24), fill=tk.X)
+        stop_btn = tk.Button(btn_frame, text="■", font=("Arial", 26, "bold"), bg="#000000", fg="white", bd=0, relief=tk.FLAT, activebackground="#000000", activeforeground="white")
+        stop_btn.pack(pady=(0, 24), fill=tk.X)
+        def open_settings_modal():
+            self.show_settings_modal()
+            # Re-raise overlay after modal is created
+            if hasattr(self, 'overlay_window') and self.overlay_window.winfo_exists():
+                self.overlay_window.attributes('-topmost', True)
+                self.overlay_window.lift()
+        settings_btn = tk.Button(btn_frame, text="⚙", font=("Arial", 26, "bold"), bg="#000000", fg="white", bd=0, relief=tk.FLAT, activebackground="#000000", activeforeground="white", command=open_settings_modal)
+        settings_btn.pack(pady=(0, 24), fill=tk.X)
+        move_btn = tk.Button(btn_frame, text="⇲", font=("Arial", 26, "bold"), bg="#000000", fg="white", bd=0, relief=tk.FLAT, activebackground="#000000", activeforeground="white")
+        move_btn.pack(pady=(0, 0), fill=tk.X)
         def start_move(event):
             overlay._drag_start_x = event.x
             overlay._drag_start_y = event.y
@@ -625,30 +655,153 @@ class AutoClicker:
             nx = overlay.winfo_x() + event.x - overlay._drag_start_x
             ny = overlay.winfo_y() + event.y - overlay._drag_start_y
             overlay.geometry(f"60x320+{nx}+{ny}")
-        overlay.bind('<Button-1>', start_move)
-        overlay.bind('<B1-Motion>', do_move)
-        # Vertical bar with icons (visual only)
-        btn_frame = tk.Frame(overlay, bg="#3a4655")
-        btn_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
-        # Play
-        play_btn = tk.Button(btn_frame, text="▶️", font=("Arial", 18), bg="#3a4655", fg="white", bd=0, relief=tk.FLAT, activebackground="#2e3742", activeforeground="white")
-        play_btn.pack(pady=(0, 18), fill=tk.X)
-        # Close
-        close_btn = tk.Button(btn_frame, text="✖️", font=("Arial", 18), bg="#3a4655", fg="white", bd=0, relief=tk.FLAT, activebackground="#2e3742", activeforeground="white", command=overlay.destroy)
-        close_btn.pack(pady=(0, 18), fill=tk.X)
-        # Scenario (3rd button)
-        def show_alt_overlay():
-            ox, oy = overlay.winfo_x(), overlay.winfo_y()
-            overlay.destroy()
-            self.show_alt_floating_overlay_bar(ox, oy)
-        scenario_btn = tk.Button(btn_frame, text="🔀", font=("Arial", 18), bg="#3a4655", fg="white", bd=0, relief=tk.FLAT, activebackground="#2e3742", activeforeground="white", command=show_alt_overlay)
-        scenario_btn.pack(pady=(0, 18), fill=tk.X)
-        # Settings
-        settings_btn = tk.Button(btn_frame, text="⚙️", font=("Arial", 18), bg="#3a4655", fg="white", bd=0, relief=tk.FLAT, activebackground="#2e3742", activeforeground="white")
-        settings_btn.pack(pady=(0, 18), fill=tk.X)
-        # Move
-        move_btn = tk.Button(btn_frame, text="⤢", font=("Arial", 18), bg="#3a4655", fg="white", bd=0, relief=tk.FLAT, activebackground="#2e3742", activeforeground="white")
-        move_btn.pack(pady=(0, 0), fill=tk.X)
+        move_btn.bind('<Button-1>', start_move)
+        move_btn.bind('<B1-Motion>', do_move)
+
+    def show_settings_modal(self):
+        modal = tk.Toplevel(self.master)
+        modal.title("Scenario Settings")
+        modal.transient(self.master)
+        # modal.grab_set()  # Do NOT grab, so overlay remains interactive
+        modal.resizable(False, False)
+        modal.configure(bg="#18221B")
+        w, h = 420, 420
+        self.master.update_idletasks()
+        x = self.master.winfo_x() + (self.master.winfo_width() // 2) - (w // 2)
+        y = self.master.winfo_y() + (self.master.winfo_height() // 2) - (h // 2)
+        modal.geometry(f"{w}x{h}+{x}+{y}")
+        # Top bar
+        topbar = tk.Frame(modal, bg="#232D23")
+        topbar.pack(fill=tk.X, pady=(0, 0))
+        close_btn = tk.Button(topbar, text="✕", font=("Arial", 18), bd=0, command=modal.destroy, cursor="hand2", bg="#232D23", fg="#4CAF50", activebackground="#232D23", activeforeground="#4CAF50")
+        close_btn.pack(side=tk.LEFT, padx=16, pady=8)
+        title = tk.Label(topbar, text="Scenario", font=("Arial", 18, "bold"), fg="white", bg="#232D23")
+        title.pack(side=tk.LEFT, padx=10, pady=8)
+        save_btn = tk.Button(topbar, text="💾", font=("Arial", 16), bd=0, command=modal.destroy, cursor="hand2", bg="#232D23", fg="#4CAF50", activebackground="#232D23", activeforeground="#4CAF50")
+        save_btn.pack(side=tk.RIGHT, padx=16, pady=8)
+        center_frame = tk.Frame(modal, bg="#18221B")
+        center_frame.pack(expand=True)
+        msg = tk.Label(center_frame, text="No events !", font=("Arial", 20, "bold"), fg="white", bg="#18221B")
+        msg.pack(pady=(60, 10))
+        desc = tk.Label(center_frame, text="An event contains a set of actions executed when a specific\ncondition is detected on the screen.\nYou need at least one event in your scenario to execute it.", font=("Arial", 12), fg="#B0B0B0", bg="#18221B", justify="center")
+        desc.pack(pady=(0, 0))
+        def on_add_event():
+            self.show_event_modal()
+        plus_btn = tk.Button(modal, text="+", font=("Arial", 22, "bold"), bg="#1abc6b", fg="white", activebackground="#159c54", activeforeground="white", bd=0, relief=tk.FLAT, command=on_add_event)
+        plus_btn.place(relx=0.93, rely=0.93, anchor="se", width=56, height=56)
+        plus_btn.config(highlightthickness=0, borderwidth=0)
+        plus_btn.config(cursor="hand2")
+        plus_btn.config(overrelief=tk.FLAT)
+        plus_btn.config(relief=tk.FLAT)
+        plus_btn.config(border=0)
+        plus_btn.config(highlightbackground="#1abc6b")
+        plus_btn.config(highlightcolor="#1abc6b")
+        plus_btn.config(font=("Arial", 28, "bold"))
+        plus_btn.config(pady=0, padx=0)
+        plus_btn.config(justify="center")
+        # Re-raise overlay to top after modal is created
+        if hasattr(self, 'overlay_window') and self.overlay_window.winfo_exists():
+            self.overlay_window.attributes('-topmost', True)
+            self.overlay_window.lift()
+
+    def show_event_modal(self):
+        import tkinter.ttk as ttk
+        modal = tk.Toplevel(self.master)
+        modal.title("Event")
+        modal.transient(self.master)
+        modal.resizable(False, False)
+        modal.configure(bg="#18221B")
+        w, h = 420, 420
+        self.master.update_idletasks()
+        x = self.master.winfo_x() + (self.master.winfo_width() // 2) - (w // 2)
+        y = self.master.winfo_y() + (self.master.winfo_height() // 2) - (h // 2)
+        modal.geometry(f"{w}x{h}+{x}+{y}")
+        # Top bar
+        topbar = tk.Frame(modal, bg="#232D23")
+        topbar.pack(fill=tk.X, pady=(0, 0))
+        close_btn = tk.Button(topbar, text="✕", font=("Arial", 18), bd=0, command=modal.destroy, cursor="hand2", bg="#232D23", fg="#4CAF50", activebackground="#232D23", activeforeground="#4CAF50")
+        close_btn.pack(side=tk.LEFT, padx=16, pady=8)
+        title = tk.Label(topbar, text="Event", font=("Arial", 18, "bold"), fg="white", bg="#232D23")
+        title.pack(side=tk.LEFT, padx=10, pady=8)
+        delete_btn = tk.Button(topbar, text="🗑️", font=("Arial", 16), bd=0, command=modal.destroy, cursor="hand2", bg="#232D23", fg="#4CAF50", activebackground="#232D23", activeforeground="#4CAF50")
+        delete_btn.pack(side=tk.RIGHT, padx=8, pady=8)
+        save_btn = tk.Button(topbar, text="💾", font=("Arial", 16), bd=0, command=modal.destroy, cursor="hand2", bg="#232D23", fg="#4CAF50", activebackground="#232D23", activeforeground="#4CAF50")
+        save_btn.pack(side=tk.RIGHT, padx=8, pady=8)
+        # Content area (swappable)
+        content_frame = tk.Frame(modal, bg="#18221B")
+        content_frame.pack(expand=True, fill=tk.BOTH)
+        # Store for tab switching
+        modal._event_content_frame = content_frame
+        modal._event_active_tab = 'config'
+        def show_config():
+            for w in content_frame.winfo_children():
+                w.destroy()
+            name_frame = tk.Frame(content_frame, bg="#18221B")
+            name_frame.pack(fill=tk.X, padx=24, pady=(32, 8))
+            name_label = tk.Label(name_frame, text="Name", font=("Arial", 11), fg="#B0FFB0", bg="#18221B", anchor="w")
+            name_label.pack(fill=tk.X, anchor="w")
+            name_entry = tk.Entry(name_frame, font=("Arial", 15), bg="#232D23", fg="white", insertbackground="white", relief=tk.FLAT, highlightthickness=2, highlightcolor="#4CAF50")
+            name_entry.pack(fill=tk.X, ipady=7)
+            name_entry.insert(0, "Default event")
+            cond_frame = tk.Frame(content_frame, bg="#18221B")
+            cond_frame.pack(fill=tk.X, padx=24, pady=(8, 0))
+            cond_label = tk.Label(cond_frame, text="Conditions", font=("Arial", 11), fg="#4CAF50", bg="#18221B", anchor="w")
+            cond_label.pack(fill=tk.X, anchor="w")
+            style = ttk.Style()
+            style.theme_use('clam')
+            style.configure('Green.TCombobox', fieldbackground='#232D23', background='#232D23', foreground='white', bordercolor='#4CAF50', lightcolor='#4CAF50', darkcolor='#4CAF50', arrowcolor='#4CAF50')
+            cond_var = tk.StringVar(value="All")
+            cond_combo = ttk.Combobox(cond_frame, textvariable=cond_var, values=["All", "One"], font=("Arial", 14), style='Green.TCombobox', state="readonly")
+            cond_combo.pack(fill=tk.X, ipady=4)
+            # Remove + button for config
+        def show_conditions():
+            for w in content_frame.winfo_children():
+                w.destroy()
+            msg = tk.Label(content_frame, text="No conditions !", font=("Arial", 20, "bold"), fg="white", bg="#18221B")
+            msg.pack(pady=(60, 10))
+            desc = tk.Label(content_frame, text="A condition is a part of a screenshot that will be searched on each frames displayed by your phone screen.\nYou need at least one condition in your event.", font=("Arial", 12), fg="#B0B0B0", bg="#18221B", justify="center")
+            desc.pack(pady=(0, 0))
+            def on_add_condition():
+                pass  # Placeholder
+            plus_btn = tk.Button(content_frame, text="+", font=("Arial", 22, "bold"), bg="#1abc6b", fg="white", activebackground="#159c54", activeforeground="white", bd=0, relief=tk.FLAT, command=on_add_condition)
+            plus_btn.place(relx=0.93, rely=0.93, anchor="se", width=56, height=56)
+            plus_btn.config(highlightthickness=0, borderwidth=0, cursor="hand2", overrelief=tk.FLAT, relief=tk.FLAT, border=0, highlightbackground="#1abc6b", highlightcolor="#1abc6b", font=("Arial", 28, "bold"), pady=0, padx=0, justify="center")
+        def show_actions():
+            for w in content_frame.winfo_children():
+                w.destroy()
+            msg = tk.Label(content_frame, text="No actions !", font=("Arial", 20, "bold"), fg="white", bg="#18221B")
+            msg.pack(pady=(60, 10))
+            desc = tk.Label(content_frame, text="An action is an interaction (click, swipe...) with your phone triggered when the created conditions are fulfilled.\nYou need at least one action in your event.", font=("Arial", 12), fg="#B0B0B0", bg="#18221B", justify="center")
+            desc.pack(pady=(0, 0))
+            def on_add_action():
+                pass  # Placeholder
+            plus_btn = tk.Button(content_frame, text="+", font=("Arial", 22, "bold"), bg="#1abc6b", fg="white", activebackground="#159c54", activeforeground="white", bd=0, relief=tk.FLAT, command=on_add_action)
+            plus_btn.place(relx=0.93, rely=0.93, anchor="se", width=56, height=56)
+            plus_btn.config(highlightthickness=0, borderwidth=0, cursor="hand2", overrelief=tk.FLAT, relief=tk.FLAT, border=0, highlightbackground="#1abc6b", highlightcolor="#1abc6b", font=("Arial", 28, "bold"), pady=0, padx=0, justify="center")
+        # Bottom navigation bar
+        nav_bar = tk.Frame(modal, bg="#232D23")
+        nav_bar.pack(side=tk.BOTTOM, fill=tk.X)
+        def set_active(tab):
+            modal._event_active_tab = tab
+            for btn, t in [(nav_btn1, 'config'), (nav_btn2, 'conditions'), (nav_btn3, 'actions')]:
+                if t == tab:
+                    btn.config(bg="#232D23", fg="#4CAF50")
+                else:
+                    btn.config(bg="#232D23", fg="#B0FFB0")
+            if tab == 'config':
+                show_config()
+            elif tab == 'conditions':
+                show_conditions()
+            elif tab == 'actions':
+                show_actions()
+        nav_btn1 = tk.Button(nav_bar, text="⚙\nConfig", font=("Arial", 12), bd=0, bg="#232D23", fg="#4CAF50", activebackground="#232D23", activeforeground="#4CAF50", command=lambda: set_active('config'))
+        nav_btn1.pack(side=tk.LEFT, expand=True, fill=tk.X)
+        nav_btn2 = tk.Button(nav_bar, text="🖼️\nConditions", font=("Arial", 12), bd=0, bg="#232D23", fg="#B0FFB0", activebackground="#232D23", activeforeground="#4CAF50", command=lambda: set_active('conditions'))
+        nav_btn2.pack(side=tk.LEFT, expand=True, fill=tk.X)
+        nav_btn3 = tk.Button(nav_bar, text="🖱️\nActions", font=("Arial", 12), bd=0, bg="#232D23", fg="#B0FFB0", activebackground="#232D23", activeforeground="#4CAF50", command=lambda: set_active('actions'))
+        nav_btn3.pack(side=tk.LEFT, expand=True, fill=tk.X)
+        # Show default tab
+        set_active('config')
 
     def show_alt_floating_overlay_bar(self, x, y):
         overlay = tk.Toplevel(self.master)
@@ -656,8 +809,8 @@ class AutoClicker:
         overlay.geometry(f"60x320+{x}+{y}")
         overlay.overrideredirect(True)
         overlay.attributes("-topmost", True)
-        overlay.attributes("-alpha", 0.7)
-        overlay.config(bg="#3a4655")
+        overlay.attributes("-alpha", 0.95)
+        overlay.config(bg="#000000")
         # Make overlay draggable
         def start_move(event):
             overlay._drag_start_x = event.x
@@ -668,22 +821,22 @@ class AutoClicker:
             overlay.geometry(f"60x320+{nx}+{ny}")
         overlay.bind('<Button-1>', start_move)
         overlay.bind('<B1-Motion>', do_move)
-        btn_frame = tk.Frame(overlay, bg="#3a4655")
-        btn_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
-        # ←
-        left_btn = tk.Button(btn_frame, text="←", font=("Arial", 18), bg="#3a4655", fg="white", bd=0, relief=tk.FLAT, activebackground="#2e3742", activeforeground="white")
-        left_btn.pack(pady=(0, 18), fill=tk.X)
-        # ⦿
-        circle_btn = tk.Button(btn_frame, text="⦿", font=("Arial", 18), bg="#3a4655", fg="white", bd=0, relief=tk.FLAT, activebackground="#2e3742", activeforeground="white")
-        circle_btn.pack(pady=(0, 18), fill=tk.X)
-        # ＋
-        plus_btn = tk.Button(btn_frame, text="＋", font=("Arial", 18), bg="#3a4655", fg="white", bd=0, relief=tk.FLAT, activebackground="#2e3742", activeforeground="white")
-        plus_btn.pack(pady=(0, 18), fill=tk.X)
-        # 👁️
-        eye_btn = tk.Button(btn_frame, text="👁️", font=("Arial", 18), bg="#3a4655", fg="white", bd=0, relief=tk.FLAT, activebackground="#2e3742", activeforeground="white")
-        eye_btn.pack(pady=(0, 18), fill=tk.X)
-        # ⬌
-        move_btn = tk.Button(btn_frame, text="⬌", font=("Arial", 18), bg="#3a4655", fg="white", bd=0, relief=tk.FLAT, activebackground="#2e3742", activeforeground="white")
+        btn_frame = tk.Frame(overlay, bg="#000000")
+        btn_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
+        # Back (left arrow)
+        left_btn = tk.Button(btn_frame, text="←", font=("Arial", 26, "bold"), bg="#000000", fg="white", bd=0, relief=tk.FLAT, activebackground="#000000", activeforeground="white")
+        left_btn.pack(pady=(10, 32), fill=tk.X)
+        # Record (solid circle)
+        circle_btn = tk.Button(btn_frame, text="●", font=("Arial", 26, "bold"), bg="#000000", fg="white", bd=0, relief=tk.FLAT, activebackground="#000000", activeforeground="white")
+        circle_btn.pack(pady=(0, 32), fill=tk.X)
+        # Add (plus)
+        plus_btn = tk.Button(btn_frame, text="＋", font=("Arial", 26, "bold"), bg="#000000", fg="white", bd=0, relief=tk.FLAT, activebackground="#000000", activeforeground="white")
+        plus_btn.pack(pady=(0, 32), fill=tk.X)
+        # Eye (solid diamond as fallback)
+        eye_btn = tk.Button(btn_frame, text="◆", font=("Arial", 26, "bold"), bg="#000000", fg="white", bd=0, relief=tk.FLAT, activebackground="#000000", activeforeground="white")
+        eye_btn.pack(pady=(0, 32), fill=tk.X)
+        # Move (solid arrows)
+        move_btn = tk.Button(btn_frame, text=" 1F1", font=("Arial", 26, "bold"), bg="#000000", fg="white", bd=0, relief=tk.FLAT, activebackground="#000000", activeforeground="white")
         move_btn.pack(pady=(0, 0), fill=tk.X)
 
     def search_scenarios(self):
