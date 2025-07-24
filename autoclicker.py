@@ -706,6 +706,10 @@ class AutoClicker:
 
     def show_event_modal(self):
         import tkinter.ttk as ttk
+        from PIL import Image, ImageTk
+        import pyautogui
+        if not hasattr(self, '_event_conditions'):
+            self._event_conditions = []  # In-memory list of conditions for this event
         modal = tk.Toplevel(self.master)
         modal.title("Event")
         modal.transient(self.master)
@@ -730,7 +734,6 @@ class AutoClicker:
         # Content area (swappable)
         content_frame = tk.Frame(modal, bg="#18221B")
         content_frame.pack(expand=True, fill=tk.BOTH)
-        # Store for tab switching
         modal._event_content_frame = content_frame
         modal._event_active_tab = 'config'
         def show_config():
@@ -753,19 +756,70 @@ class AutoClicker:
             cond_var = tk.StringVar(value="All")
             cond_combo = ttk.Combobox(cond_frame, textvariable=cond_var, values=["All", "One"], font=("Arial", 14), style='Green.TCombobox', state="readonly")
             cond_combo.pack(fill=tk.X, ipady=4)
-            # Remove + button for config
         def show_conditions():
             for w in content_frame.winfo_children():
                 w.destroy()
-            msg = tk.Label(content_frame, text="No conditions !", font=("Arial", 20, "bold"), fg="white", bg="#18221B")
-            msg.pack(pady=(60, 10))
-            desc = tk.Label(content_frame, text="A condition is a part of a screenshot that will be searched on each frames displayed by your phone screen.\nYou need at least one condition in your event.", font=("Arial", 12), fg="#B0B0B0", bg="#18221B", justify="center")
-            desc.pack(pady=(0, 0))
+            # If there are conditions, show them as cards
+            if self._event_conditions:
+                card_frame = tk.Frame(content_frame, bg="#18221B")
+                card_frame.pack(fill=tk.X, padx=16, pady=(16, 0))
+                for idx, cond in enumerate(self._event_conditions):
+                    card = tk.Frame(card_frame, bg="#232D23", bd=0, relief=tk.FLAT)
+                    card.pack(fill=tk.X, pady=8)
+                    # Thumbnail
+                    img = Image.open(cond['image_path'])
+                    img.thumbnail((120, 60))
+                    tk_img = ImageTk.PhotoImage(img)
+                    img_label = tk.Label(card, image=tk_img, bg="#232D23")
+                    img_label.image = tk_img
+                    img_label.place(x=0, y=0)
+                    # Name
+                    name_label = tk.Label(card, text=cond['name'], font=("Arial", 13, "bold"), fg="white", bg="#232D23")
+                    name_label.place(x=8, y=4)
+                    # Detection type icon
+                    det_icon = "🗔" if cond['det_type'] == "Exact" else ("📱" if cond['det_type'] == "Screen" else "⬚")
+                    det_label = tk.Label(card, text=det_icon, font=("Arial", 16), fg="#4CAF50", bg="#232D23")
+                    det_label.place(x=8, y=32)
+                    # Status (checkmark)
+                    status_label = tk.Label(card, text="✔", font=("Arial", 16), fg="#4CAF50", bg="#232D23")
+                    status_label.place(x=90, y=32)
+                    # Percentage (dummy)
+                    percent_label = tk.Label(card, text="4%", font=("Arial", 10), fg="#B0FFB0", bg="#232D23")
+                    percent_label.place(x=90, y=50)
+                    # Delete button
+                    del_btn = tk.Button(card, text="🗑️", font=("Arial", 12), bd=0, command=lambda i=idx: delete_condition(i), cursor="hand2", bg="#232D23", fg="#4CAF50", activebackground="#232D23", activeforeground="#4CAF50")
+                    del_btn.place(x=140, y=10, width=32, height=32)
+                    # Copy button
+                    copy_btn = tk.Button(card, text="📋", font=("Arial", 12), bd=0, command=lambda i=idx: copy_condition(i), cursor="hand2", bg="#232D23", fg="#4CAF50", activebackground="#232D23", activeforeground="#4CAF50")
+                    copy_btn.place(x=180, y=10, width=32, height=32)
+                    card.config(width=220, height=70)
+                    card.pack_propagate(False)
+            else:
+                msg = tk.Label(content_frame, text="No conditions !", font=("Arial", 20, "bold"), fg="white", bg="#18221B")
+                msg.pack(pady=(60, 10))
+                desc = tk.Label(content_frame, text="A condition is a part of a screenshot that will be searched on each frames displayed by your phone screen.\nYou need at least one condition in your event.", font=("Arial", 12), fg="#B0B0B0", bg="#18221B", justify="center")
+                desc.pack(pady=(0, 0))
             def on_add_condition():
-                pass  # Placeholder
+                self.start_condition_capture(lambda cond: add_condition_and_refresh(cond, show_conditions))
             plus_btn = tk.Button(content_frame, text="+", font=("Arial", 22, "bold"), bg="#1abc6b", fg="white", activebackground="#159c54", activeforeground="white", bd=0, relief=tk.FLAT, command=on_add_condition)
             plus_btn.place(relx=0.93, rely=0.93, anchor="se", width=56, height=56)
             plus_btn.config(highlightthickness=0, borderwidth=0, cursor="hand2", overrelief=tk.FLAT, relief=tk.FLAT, border=0, highlightbackground="#1abc6b", highlightcolor="#1abc6b", font=("Arial", 28, "bold"), pady=0, padx=0, justify="center")
+            def delete_condition(idx):
+                del self._event_conditions[idx]
+                show_conditions()
+            def copy_condition(idx):
+                import shutil
+                import uuid
+                cond = self._event_conditions[idx].copy()
+                new_img_path = f"cropped_condition_{uuid.uuid4().hex}.png"
+                shutil.copy(cond['image_path'], new_img_path)
+                cond['image_path'] = new_img_path
+                cond['name'] += " (copy)"
+                self._event_conditions.append(cond)
+                show_conditions()
+            def add_condition_and_refresh(cond, refresh_func):
+                self._event_conditions.append(cond)
+                refresh_func()
         def show_actions():
             for w in content_frame.winfo_children():
                 w.destroy()
@@ -778,7 +832,6 @@ class AutoClicker:
             plus_btn = tk.Button(content_frame, text="+", font=("Arial", 22, "bold"), bg="#1abc6b", fg="white", activebackground="#159c54", activeforeground="white", bd=0, relief=tk.FLAT, command=on_add_action)
             plus_btn.place(relx=0.93, rely=0.93, anchor="se", width=56, height=56)
             plus_btn.config(highlightthickness=0, borderwidth=0, cursor="hand2", overrelief=tk.FLAT, relief=tk.FLAT, border=0, highlightbackground="#1abc6b", highlightcolor="#1abc6b", font=("Arial", 28, "bold"), pady=0, padx=0, justify="center")
-        # Bottom navigation bar
         nav_bar = tk.Frame(modal, bg="#232D23")
         nav_bar.pack(side=tk.BOTTOM, fill=tk.X)
         def set_active(tab):
@@ -800,8 +853,159 @@ class AutoClicker:
         nav_btn2.pack(side=tk.LEFT, expand=True, fill=tk.X)
         nav_btn3 = tk.Button(nav_bar, text="🖱️\nActions", font=("Arial", 12), bd=0, bg="#232D23", fg="#B0FFB0", activebackground="#232D23", activeforeground="#4CAF50", command=lambda: set_active('actions'))
         nav_btn3.pack(side=tk.LEFT, expand=True, fill=tk.X)
-        # Show default tab
         set_active('config')
+
+    def start_condition_capture(self, on_save=None):
+        import pyautogui
+        from PIL import Image, ImageTk
+        screenshot = pyautogui.screenshot()
+        screenshot.save('full_screenshot.png')
+        overlay = tk.Toplevel(self.master)
+        overlay.attributes('-fullscreen', True)
+        overlay.attributes('-topmost', True)
+        overlay.config(bg='#000000')
+        overlay.attributes('-alpha', 0.3)
+        cam_btn = tk.Button(overlay, text='📷', font=("Arial", 28), bg='#ffffff', fg='#222', bd=0, relief=tk.FLAT, command=lambda: on_screenshot())
+        cam_btn.place(relx=0.05, rely=0.5, anchor='w', width=60, height=60)
+        cancel_btn = tk.Button(overlay, text='✖', font=("Arial", 28), bg='#ffffff', fg='#c00', bd=0, relief=tk.FLAT, command=overlay.destroy)
+        cancel_btn.place(relx=0.05, rely=0.6, anchor='w', width=60, height=60)
+        move_btn = tk.Button(overlay, text='⇲', font=("Arial", 28), bg='#ffffff', fg='#222', bd=0, relief=tk.FLAT)
+        move_btn.place(relx=0.05, rely=0.7, anchor='w', width=60, height=60)
+        def start_move(event):
+            overlay._drag_start_x = event.x
+            overlay._drag_start_y = event.y
+        def do_move(event):
+            nx = overlay.winfo_x() + event.x - overlay._drag_start_x
+            ny = overlay.winfo_y() + event.y - overlay._drag_start_y
+            overlay.geometry(f"{overlay.winfo_width()}x{overlay.winfo_height()}+{nx}+{ny}")
+        move_btn.bind('<Button-1>', start_move)
+        move_btn.bind('<B1-Motion>', do_move)
+        def on_screenshot():
+            overlay.destroy()
+            self.show_crop_popup('full_screenshot.png', on_save)
+
+    def show_crop_popup(self, image_path, on_save=None):
+        from PIL import Image, ImageTk
+        crop_win = tk.Toplevel(self.master)
+        crop_win.title("Crop Screenshot")
+        crop_win.transient(self.master)
+        crop_win.resizable(True, True)
+        img = Image.open(image_path)
+        tk_img = ImageTk.PhotoImage(img)
+        canvas = tk.Canvas(crop_win, width=img.width, height=img.height, cursor="cross")
+        canvas.pack()
+        canvas.create_image(0, 0, anchor="nw", image=tk_img)
+        crop_win.tk_img = tk_img
+        rect = [None]
+        start_x = [0]
+        start_y = [0]
+        def on_press(event):
+            start_x[0] = event.x
+            start_y[0] = event.y
+            if rect[0]:
+                canvas.delete(rect[0])
+            rect[0] = canvas.create_rectangle(event.x, event.y, event.x, event.y, outline="#4CAF50", width=2)
+        def on_drag(event):
+            if rect[0]:
+                canvas.coords(rect[0], start_x[0], start_y[0], event.x, event.y)
+        def on_release(event):
+            if rect[0]:
+                x1, y1, x2, y2 = canvas.coords(rect[0])
+                x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
+                if x2 > x1 and y2 > y1:
+                    cropped = img.crop((x1, y1, x2, y2))
+                    import uuid
+                    img_path = f'cropped_condition_{uuid.uuid4().hex}.png'
+                    cropped.save(img_path)
+                    crop_win.destroy()
+                    self.show_condition_details_modal(img_path, on_save)
+        canvas.bind('<ButtonPress-1>', on_press)
+        canvas.bind('<B1-Motion>', on_drag)
+        canvas.bind('<ButtonRelease-1>', on_release)
+
+    def show_condition_details_modal(self, cropped_img_path, on_save=None):
+        import tkinter.ttk as ttk
+        from PIL import Image, ImageTk
+        modal = tk.Toplevel(self.master)
+        modal.title("Condition")
+        modal.transient(self.master)
+        modal.resizable(False, False)
+        modal.configure(bg="#18221B")
+        w, h = 420, 540
+        self.master.update_idletasks()
+        x = self.master.winfo_x() + (self.master.winfo_width() // 2) - (w // 2)
+        y = self.master.winfo_y() + (self.master.winfo_height() // 2) - (h // 2)
+        modal.geometry(f"{w}x{h}+{x}+{y}")
+        topbar = tk.Frame(modal, bg="#232D23")
+        topbar.pack(fill=tk.X, pady=(0, 0))
+        close_btn = tk.Button(topbar, text="✕", font=("Arial", 18), bd=0, command=modal.destroy, cursor="hand2", bg="#232D23", fg="#4CAF50", activebackground="#232D23", activeforeground="#4CAF50")
+        close_btn.pack(side=tk.LEFT, padx=16, pady=8)
+        title = tk.Label(topbar, text="Condition", font=("Arial", 18, "bold"), fg="white", bg="#232D23")
+        title.pack(side=tk.LEFT, padx=10, pady=8)
+        delete_btn = tk.Button(topbar, text="🗑️", font=("Arial", 16), bd=0, command=modal.destroy, cursor="hand2", bg="#232D23", fg="#4CAF50", activebackground="#232D23", activeforeground="#4CAF50")
+        delete_btn.pack(side=tk.RIGHT, padx=8, pady=8)
+        def save_and_close():
+            cond = {
+                'name': name_entry.get(),
+                'image_path': cropped_img_path,
+                'det_type': det_type_var.get(),
+                'status': 'Present',
+            }
+            if on_save:
+                on_save(cond)
+            modal.destroy()
+        save_btn = tk.Button(topbar, text="💾", font=("Arial", 16), bd=0, command=save_and_close, cursor="hand2", bg="#232D23", fg="#4CAF50", activebackground="#232D23", activeforeground="#4CAF50")
+        save_btn.pack(side=tk.RIGHT, padx=8, pady=8)
+        name_frame = tk.Frame(modal, bg="#18221B")
+        name_frame.pack(fill=tk.X, padx=24, pady=(16, 8))
+        name_label = tk.Label(name_frame, text="Name", font=("Arial", 11), fg="#B0FFB0", bg="#18221B", anchor="w")
+        name_label.pack(fill=tk.X, anchor="w")
+        name_entry = tk.Entry(name_frame, font=("Arial", 15), bg="#232D23", fg="white", insertbackground="white", relief=tk.FLAT, highlightthickness=2, highlightcolor="#4CAF50")
+        name_entry.pack(fill=tk.X, ipady=7)
+        name_entry.insert(0, "Condition")
+        det_frame = tk.Frame(modal, bg="#233024", bd=0)
+        det_frame.pack(fill=tk.X, padx=24, pady=(8, 8))
+        img = Image.open(cropped_img_path)
+        img.thumbnail((320, 120))
+        tk_img = ImageTk.PhotoImage(img)
+        img_label = tk.Label(det_frame, image=tk_img, bg="#233024")
+        img_label.image = tk_img
+        img_label.pack(pady=(12, 8))
+        vis_frame = tk.Frame(det_frame, bg="#233024")
+        vis_frame.pack(fill=tk.X, pady=(8, 0))
+        vis_label = tk.Label(vis_frame, text="Visibility", font=("Arial", 11), fg="#B0FFB0", bg="#233024")
+        vis_label.pack(side=tk.LEFT)
+        vis_var = tk.StringVar(value="Present")
+        vis_btn = tk.Button(vis_frame, text="✔ Present", font=("Arial", 13), bg="#233024", fg="#4CAF50", bd=0, relief=tk.FLAT, command=lambda: vis_var.set("Present"))
+        vis_btn.pack(side=tk.LEFT, padx=10)
+        det_type_frame = tk.Frame(det_frame, bg="#233024")
+        det_type_frame.pack(fill=tk.X, pady=(8, 0))
+        det_type_label = tk.Label(det_type_frame, text="Detection type", font=("Arial", 11), fg="#B0FFB0", bg="#233024")
+        det_type_label.pack(side=tk.LEFT)
+        det_type_var = tk.StringVar(value="Exact")
+        det_type_options = [
+            ("Exact", "🗔"),
+            ("Screen", "📱"),
+            ("Area", "⬚")
+        ]
+        def show_det_type_menu(event=None):
+            menu = tk.Menu(modal, tearoff=0, bg="#232D23", fg="#4CAF50", font=("Arial", 12))
+            for val, icon in det_type_options:
+                menu.add_command(label=f"{icon}  {val}", command=lambda v=val: det_type_var.set(v))
+            menu.tk_popup(det_type_btn.winfo_rootx(), det_type_btn.winfo_rooty() + det_type_btn.winfo_height())
+        det_type_btn = tk.Button(det_type_frame, text=f"🗔  {det_type_var.get()} ▼", font=("Arial", 13), bg="#233024", fg="#4CAF50", bd=1, relief=tk.FLAT, command=show_det_type_menu)
+        det_type_btn.pack(side=tk.LEFT, padx=10)
+        def update_det_type(*args):
+            icon = next((icon for val, icon in det_type_options if val == det_type_var.get()), "🗔")
+            det_type_btn.config(text=f"{icon}  {det_type_var.get()} ▼")
+        det_type_var.trace_add('write', update_det_type)
+        slider_frame = tk.Frame(modal, bg="#233024")
+        slider_frame.pack(fill=tk.X, padx=24, pady=(16, 0))
+        slider_label = tk.Label(slider_frame, text="Sensitivity", font=("Arial", 11), fg="#B0FFB0", bg="#233024")
+        slider_label.pack(anchor="w")
+        slider = ttk.Scale(slider_frame, from_=0, to=10, orient=tk.HORIZONTAL)
+        slider.set(5)
+        slider.pack(fill=tk.X, pady=(4, 8))
 
     def show_alt_floating_overlay_bar(self, x, y):
         overlay = tk.Toplevel(self.master)

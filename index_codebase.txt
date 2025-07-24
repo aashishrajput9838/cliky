@@ -1,0 +1,79 @@
+cliky Project — Codebase Index
+================================
+
+1. Files and Folders
+--------------------
+- .git/ (hidden git directory)
+- autoclicker.py (main Python script, 695 lines)
+- README.md (project readme, 2 lines)
+- requirements.txt (Python dependencies, 3 lines)
+- scenarios.json (scenario data, currently empty)
+
+2. Main Script: autoclicker.py — Detailed Breakdown
+---------------------------------------------------
+
+Main Class: AutoClicker
+  Handles the entire GUI, scenario management, recording, playback, and automation logic.
+
+Initialization & UI
+- __init__(self, master): Initializes the main window, sets up variables, hotkeys, and loads or prompts for scenarios.
+- open_settings(self): Placeholder for settings dialog.
+- clear_widgets(self): Destroys all current UI widgets.
+- show_welcome_screen(self): Displays the welcome screen if no scenarios exist.
+- show_new_scenario_interface(self): UI for creating a new scenario.
+- get_scenario_btn_text(self, typ): Returns button text for scenario type selection.
+- select_scenario_type(self, typ): Handles scenario type selection.
+- create_first_scenario(self): Starts the new scenario creation process.
+- show_main_interface(self, load_scenarios=True): Main UI for listing and managing scenarios.
+
+Scenario Management
+- save_new_scenario(self): Saves a new scenario with name and type.
+- save_scenario(self): Saves a recorded scenario with steps and description.
+- load_scenarios(self): Loads scenarios from the JSON file.
+- save_scenarios(self): Persists scenarios to the JSON file.
+- import_scenarios(self): Imports scenarios from a JSON file.
+- export_scenarios(self): Exports scenarios to a JSON file.
+- delete_scenario(self): Deletes the currently selected scenario.
+- delete_scenario_by_name(self, name): Deletes a scenario by name.
+- edit_scenario(self): Renames a scenario.
+- edit_description(self): Edits the description of a scenario.
+- edit_scenario_steps(self): Opens a step editor for a scenario (add, remove, edit, reorder steps).
+
+Scenario Playback & Recording
+- play_scenario(self): Plays the currently selected scenario.
+- play_scenario_by_name(self, name): Plays a scenario by name, showing overlay permission popups.
+- run_scenario(self, scenario): Executes the steps of a scenario (moves mouse, clicks, waits).
+- toggle_recording(self): Starts/stops recording mouse actions for a scenario.
+- record_step(self): Records mouse positions and intervals during recording.
+
+Automation Controls
+- click_loop(self, interval): Performs repeated clicks at a set interval.
+- start_clicking(self): Starts the click loop in a thread.
+- stop_clicking(self): Stops the click loop and recording.
+
+UI Updates & Selection
+- update_mouse_position(self): Updates the mouse position label.
+- update_description_label(self): Updates the scenario description label.
+- on_scenario_select(self, value): Handles scenario selection changes.
+
+Overlay & Permission Popups
+- show_accessibility_popup(self): Shows a popup for accessibility permission.
+- show_full_control_popup(self): Shows a popup for full control permission.
+- show_floating_overlay_bar(self, x=None, y=None): Shows a draggable overlay bar with controls.
+- show_alt_floating_overlay_bar(self, x, y): Shows an alternative overlay bar.
+
+Miscellaneous
+- search_scenarios(self): Placeholder for search functionality.
+
+Inner Functions (within methods)
+- add_step, remove_step, edit_step, move_up, move_down, save_and_close: Used within the step editor for scenario steps.
+- close_popup, show_accessibility_popup, show_full_control_popup, show_overlay_bar, show_alt_overlay, start_move, do_move: Used within popup and overlay methods for UI control and navigation.
+
+Script Entry Point
+- If run as the main script, creates the Tkinter root window and launches the AutoClicker app.
+
+3. Other Files
+--------------
+- README.md: Only contains the project name.
+- requirements.txt: Lists dependencies: pyautogui, keyboard.
+- scenarios.json: Stores user scenarios (currently empty). 
